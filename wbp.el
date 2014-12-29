@@ -13,7 +13,8 @@
 ;;; Code:
 
 (require 'cl)
-(setq debug-on-error t)
+(require 'etags)
+(require 'help-mode)
 
 (defun wbp:switch-to-previous-buffer ()
   "Switches between the last two buffers in current frame."
@@ -90,11 +91,70 @@
     (pop-to-buffer buffer)
     (goto-char point)))
 
+(defun wbp:elisp-get-nevigatable-symbol-names ()
+  "Return a list of strings for the standard elisp obarray symbols
+   to which navigation is possible."
+  (let ((result '()))
+    (mapatoms
+     (lambda (x)
+       (when (or (fboundp x)
+                 (boundp x)
+                 (symbol-plist x)
+                 (facep x))
+         (push (symbol-name x) result))))
+    result))
+
+(defun wbp:elisp-read-symbol-at-point ()
+  "Return the symbol at point as a string. If `current-prefix-arg'
+   is not nil, user is prompted for the symbol."
+  (let* ((sym-at-point (symbol-at-point))
+         (at-point (and sym-at-point (symbol-name sym-at-point))))
+    (if (or current-prefix-arg (null at-point))
+        (completing-read "Symbol: "
+                         (wbp:elisp-get-nevigatable-symbol-names)
+                         nil t nil nil at-point)
+      at-point)))
+
+(defun wbp:elisp-find-stuffs-at-point (sym-name)
+  "Find elisp stuff at point, which could be a function, variable, library or face.
+   With a prefix arg, or if there is no thing at point, prompt for
+   the symbol to jump to. Argument SYM-NAME is the thing to find."
+  (interactive (list (wbp:elisp-read-symbol-at-point)))
+  (when sym-name
+    (let ((sym (intern sym-name)))
+      (message "Searching for %s..." sym-name)
+      (ring-insert find-tag-marker-ring (point-marker))
+      (cond
+       ((fboundp sym)
+        (find-function sym))
+       ((boundp sym)
+        (find-variable sym))
+       ((or (featurep sym) (locate-library sym-name))
+        (find-library sym-name))
+       ((facep sym)
+        (find-face-definition sym))
+       (t
+        (pop-tag-mark)
+        (error "Don't know how to find '%s'" sym))))))
+
+(defun wbp:elisp-describe-stuffs-at-point (sym-name)
+  "Display the full documentation of the elisp thing at point.
+   The named subject may be a function, variable, library or face.
+   With a prefix arg, or if there is not \"thing\" at point, prompt
+   for the symbol to jump to. Argument SYM-NAME is the thing to find."
+  (interactive (list (wbp:elisp-read-symbol-at-point)))
+  (help-xref-interned (intern sym-name)))
+
 (global-set-key (kbd "C-c h") 'windmove-left)
 (global-set-key (kbd "C-c l") 'windmove-right)
 (global-set-key (kbd "C-c k") 'windmove-up)
 (global-set-key (kbd "C-c j") 'windmove-down)
-(global-set-key (kbd "C-c C-p") 'wpb:push-way-point)
-(global-set-key (kbd "C-c C-q") 'wpb:pop-way-point)
-(global-set-key (kbd "C-c r") 'wpb:transpose-all-buffers)
-(global-set-key (kbd "C-c p") 'wpb:switch-to-previous-buffer)
+(global-set-key (kbd "C-c C-p") 'wbp:push-way-point)
+(global-set-key (kbd "C-c C-q") 'wbp:pop-way-point)
+(global-set-key (kbd "C-c r") 'wbp:transpose-all-buffers)
+(global-set-key (kbd "C-c p") 'wbp:switch-to-previous-buffer)
+(global-set-key (kbd "C-;") 'wbp:elisp-find-stuffs-at-point)
+(global-set-key (kbd "C-,") 'pop-tag-mark)
+(global-set-key (kbd "C-c C-d") 'wbp:elisp-describe-stuffs-at-point)
+
+(provide 'wbp)
