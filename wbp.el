@@ -18,11 +18,13 @@
 
 (defun wbp:switch-to-previous-buffer ()
   "Switches between the last two buffers in current frame."
+
   (interactive)
   (switch-to-buffer (other-buffer (current-buffer) 1)))
 
 (defun wbp:switch-buffers-between-frames ()
   "Switches the buffers between the two last frames."
+
   (interactive)
   (let ((this-frame-buffer nil)
         (other-frame-buffer nil))
@@ -36,36 +38,37 @@
     (switch-to-buffer other-frame-buffer)))
 
 (defun wbp:transpose-all-buffers (k)
-  (concat "Transpose all current frames in clockwise order in k strides "
-	  "without leaving the current frame.")
-  (interactive "n")
-  (message "Stride: %s" k)
+  "Transpose all current frames in clockwise order in k strides without leaving
+the current frame. By default transpose by offset 1 (in clockwise)."
+
+  (interactive "p")
+  (message "Transposition stride: %s" k)
   (let* ((cw (selected-window))
-	 (fw cw)
-	 (nw (next-window))
-	 (my-windows (list cw)))
+         (fw cw)
+         (nw (next-window))
+         (my-windows (list cw)))
     (progn
       ;; list all windows
       (while (not (eq nw fw))
-	(setq my-windows (cons nw my-windows))
-	(setq nw (next-window nw)))
-      ;; partition the whole array by (gcd n k ) sections and then rotate it
+        (setq my-windows (cons nw my-windows))
+        (setq nw (next-window nw)))
+      ;; partition the whole array by (gcd n k) sections and then rotate it
       (let* ((n (length my-windows))
-	     (k (mod k n))
-	     (m (gcd n k))
-	     (i 0))
-	(while (< i m)
-	  (setq hold (window-buffer (nth (mod (+ i k) n) my-windows)))
-	  (set-window-buffer (nth (mod (+ i k) n) my-windows)
-			     (window-buffer (nth i my-windows)))
-	  ;; rotate j-th position elements from section to section
-	  (let ((j (mod (+ i k) n)))
-	    (while (/= j i)
-	      (setq twb (window-buffer (nth (mod (+ j k) n) my-windows)))
-	      (set-window-buffer (nth (mod (+ j k) n) my-windows) hold)
-	      (setq hold twb)
-	      (setq j (mod (+ j k) n))))
-	  (setq i (1+ i))))
+             (k (mod k n))
+             (m (gcd n k))
+             (i 0))
+        (while (< i m)
+          (setq hold (window-buffer (nth (mod (+ i k) n) my-windows)))
+          (set-window-buffer (nth (mod (+ i k) n) my-windows)
+                             (window-buffer (nth i my-windows)))
+          ;; rotate j-th position elements from section to section
+          (let ((j (mod (+ i k) n)))
+            (while (/= j i)
+              (setq twb (window-buffer (nth (mod (+ j k) n) my-windows)))
+              (set-window-buffer (nth (mod (+ j k) n) my-windows) hold)
+              (setq hold twb)
+              (setq j (mod (+ j k) n))))
+          (setq i (1+ i))))
       )))
 
 (defvar wbp:positions ()
@@ -73,6 +76,7 @@
 
 (defun wbp:push-way-point ()
   "Push the current position to the waypoints stack."
+
   (interactive)
   (set-variable 'wbp:positions
 		(cons (list (buffer-name) (point))
@@ -80,20 +84,22 @@
 
 (defun wbp:pop-way-point ()
   "Pop a position from the waypoints stack."
+
   (interactive)
   (unless wbp:positions
     (error "No wayponts to pop!"))
   (let* ((address (car wbp:positions))
-	 (buffer (car address))
-	 (point (cadr address))
-	 (rest (cdr wbp:positions)))
+         (buffer (car address))
+         (point (cadr address))
+         (rest (cdr wbp:positions)))
     (set-variable 'wbp:positions rest)
     (pop-to-buffer buffer)
     (goto-char point)))
 
 (defun wbp:elisp-get-nevigatable-symbol-names ()
   "Return a list of strings for the standard elisp obarray symbols
-   to which navigation is possible."
+to which navigation is possible."
+
   (let ((result '()))
     (mapatoms
      (lambda (x)
@@ -106,7 +112,8 @@
 
 (defun wbp:elisp-read-symbol-at-point ()
   "Return the symbol at point as a string. If `current-prefix-arg'
-   is not nil, user is prompted for the symbol."
+is not nil, user is prompted for the symbol."
+
   (let* ((sym-at-point (symbol-at-point))
          (at-point (and sym-at-point (symbol-name sym-at-point))))
     (if (or current-prefix-arg (null at-point))
@@ -117,8 +124,9 @@
 
 (defun wbp:elisp-find-stuffs-at-point (sym-name)
   "Find elisp stuff at point, which could be a function, variable, library or face.
-   With a prefix arg, or if there is no thing at point, prompt for
-   the symbol to jump to. Argument SYM-NAME is the thing to find."
+With a prefix arg, or if there is no thing at point, prompt for the symbol to jump
+to. Argument SYM-NAME is the thing to find."
+
   (interactive (list (wbp:elisp-read-symbol-at-point)))
   (when sym-name
     (let ((sym (intern sym-name)))
@@ -139,9 +147,10 @@
 
 (defun wbp:elisp-describe-stuffs-at-point (sym-name)
   "Display the full documentation of the elisp thing at point.
-   The named subject may be a function, variable, library or face.
-   With a prefix arg, or if there is not \"thing\" at point, prompt
-   for the symbol to jump to. Argument SYM-NAME is the thing to find."
+The named subject may be a function, variable, library or face.
+With a prefix arg, or if there is not \"thing\" at point, prompt
+for the symbol to jump to. Argument SYM-NAME is the thing to find."
+
   (interactive (list (wbp:elisp-read-symbol-at-point)))
   (help-xref-interned (intern sym-name)))
 
