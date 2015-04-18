@@ -73,4 +73,49 @@
           (split-string line delimeter ignore-empty)
           :initial-value nil))
 
+(defun util::base64-encode-hex-string (hex-string)
+  "Base64-encode HEX-STRING and return the result. For example:
+e9f5713dec55d727bb35392cec6190ce will be turned into 6fVxPexV1ye7NTks7GGQzg=="
+
+  (lexical-let* ((length-of-hex-string (length hex-string))
+                 (bytes (let ((acc nil))
+                          (cl-loop for i from 0 below length-of-hex-string by 2
+                                   do (setq acc
+                                            (cons (string-to-number (substring hex-string
+                                                                               i
+                                                                               (+ 2 i))
+                                                                    16)
+                                                  acc))
+                                   finally return (reverse acc))))
+
+                 (result nil)
+                 (padding (pcase (mod (length bytes) 3)
+                            (`0 nil)
+                            (`1 "==")
+                            (`2 "=")))
+                 (padding-0 (pcase (mod (length bytes) 3)
+                              (`0 nil)
+                              (`1 "\0\0")
+                              (`2 "\0")))
+                 (pad-len (length padding))
+                 (padded-bytes (vconcat (concat bytes (vconcat padding-0))))
+                 (len (+ (length bytes) pad-len)))
+
+    (cl-loop for i from 0 below len by 3
+             do (lexical-let* ((n (+ (lsh (aref padded-bytes i) 16)
+                                     (lsh (aref padded-bytes (1+ i)) 8)
+                                     (aref padded-bytes (1+ (1+ i)))))
+                               (n1 (logand (lsh n -18) 63))
+                               (n2 (logand (lsh n -12) 63))
+                               (n3 (logand (lsh n -6) 63))
+                               (n4 (logand n 63)))
+
+                  (setq result (concat result
+                                       (char-to-string (aref base64-chars n1))
+                                       (char-to-string (aref base64-chars n2))
+                                       (char-to-string (aref base64-chars n3))
+                                       (char-to-string (aref base64-chars n4)))))
+
+             finally return (concat (substring result 0 (- pad-len)) padding))))
+
 (provide 'util)
